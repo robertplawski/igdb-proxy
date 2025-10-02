@@ -13,13 +13,15 @@ export default {
 				{ method: 'POST' }
 			);
 			const data = await res.json();
-			if (!data.access_token) throw new Error("Failed to fetch IGDB token");
+			if (!data.access_token) {
+				console.error("IGDB token fetch failed", data);
+				throw new Error("Failed to fetch IGDB token");
+			}
 
 			appToken = data.access_token;
 			tokenTimestamp = now;
 			return appToken;
 		}
-
 		try {
 			const url = new URL(request.url);
 			const endpoint = url.pathname.replace(/^\/api\//, ""); // e.g., /games
@@ -42,7 +44,7 @@ export default {
 					"Authorization": `Bearer ${token}`,
 					"Content-Type": "application/json",
 				},
-				body,
+				body: body, // Only present for POST/PUT
 			});
 
 			// Retry once if token expired
@@ -56,11 +58,14 @@ export default {
 						"Authorization": `Bearer ${token}`,
 						"Content-Type": "application/json",
 					},
-					body,
+					body: body,
 				});
 			}
 
-			const response = new Response(igdbRes.body, {
+			// Read text from IGDB response
+			const igdbText = await igdbRes.text();
+
+			const response = new Response(igdbText, {
 				status: igdbRes.status,
 				headers: { "Content-Type": "application/json" },
 			});
